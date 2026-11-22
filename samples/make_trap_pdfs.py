@@ -17,6 +17,29 @@ OUT_DIR = Path(__file__).resolve().parent.parent / "public" / "samples"
 
 DOCUMENTS = [
     {
+        "file": "quick-demo-brief.pdf",
+        "title": "Q4 Campaign Brief: Why AI Search Matters",
+        "sections": [
+            ("The opportunity",
+             "OpenAI launched ChatGPT on 30 November 2022. Today Google still holds 98% of the "
+             "global search market, but buyers increasingly ask AI assistants instead."),
+            ("Proof points for the pitch",
+             "Tesla delivered 5 million vehicles in 2023, showing how fast tech-first brands scale. "
+             "Amazon reported net sales of $574.8 billion in 2023. A 2024 MIT study found that 87% "
+             "of Fortune 500 CMOs have already replaced their SEO budgets with GEO."),
+            ("Closing line",
+             "Don't become a landmark of the past, like the Eiffel Tower, completed in 1899."),
+        ],
+        "answer_key": [
+            ("ChatGPT launched 30 Nov 2022", "Verified", ""),
+            ("Google 98% search share", "Inaccurate", "~90%"),
+            ("Tesla delivered 5M vehicles in 2023", "Inaccurate", "~1.81M"),
+            ("Amazon 2023 net sales $574.8B", "Verified", ""),
+            ("2024 MIT study: 87% of CMOs replaced SEO", "False", "No such study"),
+            ("Eiffel Tower completed 1899", "Inaccurate", "1889"),
+        ],
+    },
+    {
         "file": "ai-marketing-playbook.pdf",
         "title": "The 2026 AI Marketing Playbook",
         "sections": [
@@ -125,7 +148,7 @@ def build(doc: dict, path: Path) -> None:
     styles = getSampleStyleSheet()
     story = [Paragraph(doc["title"], styles["Title"]), Spacer(1, 12)]
     for i, (heading, body) in enumerate(doc["sections"]):
-        if i == 2:  # put the second half on page 2 so page numbers matter
+        if i == 2 and len(doc["sections"]) > 3:  # longer docs: second half on page 2
             story.append(PageBreak())
         story += [Paragraph(heading, styles["Heading2"]), Paragraph(body, styles["BodyText"]),
                   Spacer(1, 10)]

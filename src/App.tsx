@@ -8,6 +8,7 @@ import { Workspace } from './components/Workspace';
 import { useFactCheck } from './hooks/useFactCheck';
 import { getHealth } from './lib/api';
 import { exportCsv, exportJson, type ReportData } from './lib/export';
+import { downloadPdfReport } from './lib/pdfReport';
 import type { Health, Settings } from './types';
 
 export default function App() {
@@ -92,7 +93,20 @@ export default function App() {
             onRecheck={recheckFailed}
             onCsv={() => exportCsv(report())}
             onJson={() => exportJson(report())}
-            onPrint={() => window.print()}
+            onPdf={() =>
+              downloadPdfReport({
+                filename: state.filename,
+                fileBytes: state.fileBytes,
+                layouts: state.layouts,
+                highlights,
+                claims: state.claims,
+                results: state.results,
+                corrections: state.corrections,
+                contradictions: state.contradictions,
+                trustScore: summary.trustScore,
+                counts: summary.counts,
+              })
+            }
             onNew={reset}
           />
           <Workspace state={state} highlights={highlights} />

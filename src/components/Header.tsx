@@ -4,7 +4,7 @@ export function PenMark({ className = 'h-7 w-7' }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden>
       <path d="M8 24 L21 11 L24 14 L11 27 L7 28 Z" fill="#D62828" />
-      <path d="M21 11 L23 9 L26 12 L24 14 Z" fill="#1A1A1A" />
+      <path d="M21 11 L23 9 L26 12 L24 14 Z" fill="#E6EAF2" />
     </svg>
   );
 }

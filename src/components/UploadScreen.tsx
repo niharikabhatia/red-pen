@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { MAX_FILE_MB } from '../lib/pdf';
 
 export const SAMPLES = [
+  { file: 'quick-demo-brief.pdf', title: 'Quick demo: Q4 Campaign Brief', blurb: '6 claims · 1 page · fastest to check' },
   { file: 'ai-marketing-playbook.pdf', title: 'The 2026 AI Marketing Playbook', blurb: '12 claims · market share, valuations, a "study"' },
   { file: 'india-digital-economy-report.pdf', title: "India's Digital Economy Briefing", blurb: '9 claims · GDP, UPI, plus an internal contradiction' },
   { file: 'clean-tech-investor-memo.pdf', title: 'Clean-Tech Investor Memo', blurb: '9 claims · energy, EVs, consumer tech' },
@@ -91,7 +92,7 @@ export function UploadScreen({ onFile, error }: Props) {
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-white px-8 py-14 text-center transition ${
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-card px-8 py-14 text-center transition ${
               dragging ? 'border-pen bg-pen-soft/40' : 'border-ink/25 hover:border-ink/60'
             }`}
           >
@@ -126,7 +127,7 @@ export function UploadScreen({ onFile, error }: Props) {
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
               No PDF handy? Try a trap document
             </p>
-            <div className="divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-white">
+            <div className="divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-card">
               {SAMPLES.map((s) => (
                 <button
                   key={s.file}

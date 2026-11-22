@@ -29,8 +29,8 @@ Every claim gets one of three verdicts:
 - **Writes a corrected version** of every flagged passage, shown as editor's proof marks (~~wrong~~ ✎ right), with "copy clean text".
 - **Checks internal consistency**: flags places where the document contradicts itself.
 - **Trust score**: the share of checked claims that hold up.
-- **Exports** CSV, JSON or a printable report.
-- **Reviewer-proof**: three built-in trap documents, automatic wait-and-retry on API rate limits, a "re-check failed claims" button, and bring-your-own-key (Gemini or OpenAI) if the hosted quota runs out.
+- **Downloads a PDF report**: score and verdict summary, every claim with its real fact, evidence and sources, the corrected passages, and then your original document with each claim boxed in its verdict colour and numbered. CSV and JSON exports too.
+- **Reviewer-proof**: four built-in trap documents (including a 6-claim quick demo), automatic wait-and-retry on API rate limits, a "re-check failed claims" button, and bring-your-own-key (Gemini or OpenAI) if the hosted quota runs out.
 
 <p>
   <img src="docs/screenshots/upload.png" width="49%" alt="Upload screen" />
@@ -71,7 +71,7 @@ Design choices worth noting:
 
 ## Tech stack
 
-- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4, pdf.js, lucide icons
+- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4, pdf.js, pdf-lib, lucide icons
 - **Backend:** Python FastAPI, served as a single Vercel Python function (`api/index.py`)
 - **AI:** Google Gemini with Google Search grounding (default `gemini-2.5-flash`) **or** OpenAI Responses API with `web_search` (default `gpt-4.1-mini`), selectable per request
 - **Hosting:** Vercel (static frontend + Python serverless function)
@@ -91,8 +91,9 @@ src/                      React app
   lib/pdf.ts              pdf.js rendering + positioned text
   lib/highlight.ts        maps claim quotes to highlight rectangles
   lib/diff.ts             word diff for proof marks
+  lib/pdfReport.ts        marked-up PDF + report pages (pdf-lib)
   components/             UploadScreen, SummaryBar, PdfViewer, ClaimCard, ReviewTabs…
-public/samples/           three trap PDFs used by the "Try a trap document" buttons
+public/samples/           trap PDFs used by the "Try a trap document" buttons
 samples/make_trap_pdfs.py generates the trap PDFs + their answer keys
 tests/                    pytest suite (LLM faked, no API key needed)
 requirements.txt          Python dependencies
@@ -147,7 +148,7 @@ Reviewers can also switch provider and paste their own key in **Settings**; the 
 
 ## Test documents (answer keys)
 
-Three trap PDFs ship with the app (`public/samples/`, answer keys in `samples/make_trap_pdfs.py`). Examples:
+Four trap PDFs ship with the app (`public/samples/`, answer keys in `samples/make_trap_pdfs.py`). Examples:
 
 | Document says | Expected | Real fact |
 |---|---|---|

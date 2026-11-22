@@ -15,6 +15,7 @@ export interface FactCheckState {
   error: string | null;
   filename: string;
   doc: PDFDocumentProxy | null;
+  fileBytes: ArrayBuffer | null; // untouched copy of the PDF, for the marked-up report
   layouts: PageLayout[];
   claims: Claim[];
   status: Record<number, ClaimStatus>;
@@ -28,7 +29,7 @@ export interface FactCheckState {
 }
 
 const initial: FactCheckState = {
-  stage: 'idle', error: null, filename: '', doc: null, layouts: [], claims: [], status: {}, results: {},
+  stage: 'idle', error: null, filename: '', doc: null, fileBytes: null, layouts: [], claims: [], status: {}, results: {},
   contradictions: [], corrections: [], reviewError: null, pausedUntil: null, startedAt: null, finishedAt: null,
 };
 
@@ -130,11 +131,13 @@ export function useFactCheck(settings: Settings) {
       try {
         // 1. Read the PDF in the browser.
         if (file.size > MAX_FILE_MB * 1024 * 1024) throw new Error(`Please upload a PDF under ${MAX_FILE_MB} MB.`);
-        const doc = await openPdf(await file.arrayBuffer());
+        const bytes = await file.arrayBuffer();
+        const fileBytes = bytes.slice(0); // pdf.js takes ownership of `bytes`
+        const doc = await openPdf(bytes);
         const layouts = await readLayouts(doc);
         const pages = toPageTexts(layouts).filter((p) => p.text);
         if (!pages.length) throw new Error('No selectable text found. Scanned/image-only PDFs are not supported yet.');
-        patch({ doc, layouts, stage: 'extracting' });
+        patch({ doc, fileBytes, layouts, stage: 'extracting' });
 
         // 2. Extract claims (waiting out rate limits).
         const claims = await withRetry(() => extractClaims(pages, settings, signal), {

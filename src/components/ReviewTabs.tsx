@@ -44,7 +44,7 @@ export function CorrectedTab({
           {copied ? 'Copied' : 'Copy clean text'}
         </button>
       </div>
-      <div className="divide-y divide-rule rounded-xl border border-rule bg-white">
+      <div className="divide-y divide-rule rounded-xl border border-rule bg-card">
         {corrections.map((c) => (
           <button
             key={c.claim_id}
@@ -74,7 +74,7 @@ export function ConsistencyTab({
     <div className="space-y-3">
       <p className="text-sm text-ink-2">Places where the document disagrees with itself:</p>
       {contradictions.map((c, i) => (
-        <div key={i} className="rounded-xl border border-pen/30 bg-white p-4">
+        <div key={i} className="rounded-xl border border-pen/30 bg-card p-4">
           <p className="flex items-center gap-2 font-semibold text-pen">
             <Split className="h-4 w-4" /> {c.explanation}
           </p>

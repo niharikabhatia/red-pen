@@ -109,7 +109,7 @@ export function Workspace({ state, highlights }: Props) {
             {state.stage === 'extracting' || state.stage === 'reading' ? (
               <div className="space-y-3">
                 {[0, 1, 2].map((i) => (
-                  <div key={i} className="h-28 animate-pulse rounded-xl border border-rule bg-white" />
+                  <div key={i} className="h-28 animate-pulse rounded-xl border border-rule bg-card" />
                 ))}
                 <p className="text-center font-serif text-sm italic text-muted">Reading the copy and marking every figure…</p>
               </div>
@@ -125,7 +125,7 @@ export function Workspace({ state, highlights }: Props) {
                       key={f}
                       onClick={() => setFilter(f)}
                       className={`rounded-full border px-3 py-1 ${
-                        filter === f ? 'border-ink bg-ink text-paper' : 'border-rule bg-white hover:border-ink/50'
+                        filter === f ? 'border-ink bg-ink text-paper' : 'border-rule bg-card hover:border-ink/50'
                       }`}
                     >
                       {f} <span className="opacity-60">{count(f)}</span>

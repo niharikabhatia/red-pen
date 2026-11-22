@@ -34,7 +34,7 @@ export function SettingsDrawer({ open, onClose, settings, onChange, health }: Pr
     });
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-ink/20 no-print" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/50 no-print" onClick={onClose}>
       <aside
         className="h-full w-full max-w-sm overflow-y-auto border-l border-rule bg-paper p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -57,7 +57,7 @@ export function SettingsDrawer({ open, onClose, settings, onChange, health }: Pr
                 key={p.id}
                 onClick={() => switchProvider(p.id)}
                 className={`rounded-lg border px-3 py-2 text-left text-sm ${
-                  settings.provider === p.id ? 'border-ink bg-white' : 'border-rule hover:border-ink/50'
+                  settings.provider === p.id ? 'border-ink bg-card' : 'border-rule hover:border-ink/50'
                 }`}
               >
                 <span className="block font-semibold">{p.name}</span>
@@ -75,7 +75,7 @@ export function SettingsDrawer({ open, onClose, settings, onChange, health }: Pr
           placeholder={info?.server_key ? 'Optional: the app has its own key' : current.keyHint}
           value={settings.apiKey}
           onChange={(e) => onChange({ ...settings, apiKey: e.target.value })}
-          className="mt-1.5 w-full rounded-md border border-rule bg-white px-3 py-2 text-sm outline-none focus:border-ink"
+          className="mt-1.5 w-full rounded-md border border-rule bg-card px-3 py-2 text-sm outline-none focus:border-ink"
         />
         <p className="mt-1.5 text-xs text-muted">
           {info?.server_key ? 'Only needed if the app hits its limits. ' : (
@@ -94,7 +94,7 @@ export function SettingsDrawer({ open, onClose, settings, onChange, health }: Pr
         <select
           value={settings.model}
           onChange={(e) => onChange({ ...settings, model: e.target.value })}
-          className="mt-1.5 w-full rounded-md border border-rule bg-white px-3 py-2 text-sm outline-none focus:border-ink"
+          className="mt-1.5 w-full rounded-md border border-rule bg-card px-3 py-2 text-sm outline-none focus:border-ink"
         >
           {models.map((m) => (
             <option key={m} value={m}>

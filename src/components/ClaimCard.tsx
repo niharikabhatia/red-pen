@@ -72,8 +72,8 @@ export const ClaimCard = forwardRef<HTMLElement, Props>(function ClaimCard(
       ref={ref}
       onClick={onSelect}
       data-testid="claim-card"
-      className={`relative cursor-pointer rounded-xl border bg-white p-4 transition ${
-        selected ? 'border-ink shadow-[0_6px_24px_-10px_rgba(26,26,26,0.35)]' : 'border-rule hover:border-ink/40'
+      className={`relative cursor-pointer rounded-xl border bg-card p-4 transition ${
+        selected ? 'border-ink shadow-[0_8px_30px_-12px_rgba(0,0,0,0.8)]' : 'border-rule hover:border-ink/40'
       }`}
     >
       {/* Header row */}

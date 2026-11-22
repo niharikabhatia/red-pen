@@ -88,7 +88,7 @@ function PdfPage({ doc, layout, width, highlights, results, selectedId, onSelect
 
   return (
     <div
-      className="relative mx-auto bg-white shadow-[0_1px_0_#e4dfd3,0_10px_30px_-12px_rgba(26,26,26,0.25)]"
+      className="relative mx-auto bg-white shadow-[0_12px_40px_-12px_rgba(0,0,0,0.9)]"
       style={{ width, height }}
     >
       <canvas ref={canvasRef} style={{ width, height }} className="block" aria-label={`Page ${layout.page}`} />

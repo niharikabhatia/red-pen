@@ -1,4 +1,4 @@
-import { Check, Download, FileJson, Hourglass, Loader2, Printer, RefreshCw, RotateCcw } from 'lucide-react';
+import { Check, Download, FileDown, FileJson, Hourglass, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Stage } from '../types';
 
@@ -13,7 +13,7 @@ interface Props {
   onRecheck: () => void;
   onCsv: () => void;
   onJson: () => void;
-  onPrint: () => void;
+  onPdf: () => Promise<void>;
   onNew: () => void;
 }
 
@@ -112,7 +112,7 @@ export function SummaryBar(p: Props) {
             )}
             <BarButton onClick={p.onCsv} icon={<Download className="h-4 w-4" />} label="CSV" />
             <BarButton onClick={p.onJson} icon={<FileJson className="h-4 w-4" />} label="JSON" />
-            <BarButton onClick={p.onPrint} icon={<Printer className="h-4 w-4" />} label="Print" />
+            <PdfButton onPdf={p.onPdf} />
             <button
               onClick={p.onNew}
               className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 font-semibold text-paper hover:bg-pen"
@@ -139,6 +139,27 @@ export function SummaryBar(p: Props) {
         {done ? `Finished. ${p.trustScore ?? 0}% of claims hold up.` : `Checking ${p.filename}`}
       </p>
     </div>
+  );
+}
+
+function PdfButton({ onPdf }: { onPdf: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await onPdf();
+        } finally {
+          setBusy(false);
+        }
+      }}
+      disabled={busy}
+      data-testid="pdf-report"
+      className="inline-flex items-center gap-1.5 rounded-full border border-pen bg-pen px-4 py-2 font-semibold text-paper hover:opacity-90 disabled:opacity-60"
+    >
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} PDF report
+    </button>
   );
 }
 
