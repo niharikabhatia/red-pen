@@ -31,10 +31,11 @@ class LLMError(Exception):
     ``retry_after`` seconds and try again instead of giving up.
     """
 
-    def __init__(self, message: str, retryable: bool = False, retry_after: int = 0):
+    def __init__(self, message: str, retryable: bool = False, retry_after: int = 0, raw: str = ""):
         super().__init__(message)
         self.retryable = retryable
         self.retry_after = retry_after
+        self.raw = raw  # provider's own message, for diagnostics
 
 
 @dataclass
@@ -78,7 +79,13 @@ def _retry_after(text: str, default: int = 20) -> int:
 
 
 def classify_error(provider: str, exc: Exception) -> LLMError:
-    """Turn a provider SDK exception into a user-friendly LLMError."""
+    """Turn a provider SDK exception into a user-friendly LLMError (raw message kept)."""
+    err = _classify(provider, exc)
+    err.raw = str(exc)[:600]
+    return err
+
+
+def _classify(provider: str, exc: Exception) -> LLMError:
     name = "Gemini" if provider == "gemini" else "OpenAI"
     msg = str(exc)
     low = msg.lower()
@@ -97,7 +104,7 @@ def classify_error(provider: str, exc: Exception) -> LLMError:
                         retry_after=_retry_after(msg))
     if status in (500, 502, 503, 504) or "overloaded" in low or "unavailable" in low:
         return LLMError(f"{name} is temporarily overloaded; retrying shortly.", retryable=True, retry_after=10)
-    return LLMError(f"{name} error: {msg[:300]}")
+    return LLMError(f"{name} error: {msg[:300]}", raw=msg[:600])
 
 
 FORMAT_INSTRUCTIONS = """\

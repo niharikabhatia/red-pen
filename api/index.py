@@ -45,10 +45,10 @@ async def _llm_error(_request, exc: LLMError):
     if exc.retryable:
         return JSONResponse(
             status_code=429,
-            content={"detail": str(exc), "retry_after": exc.retry_after},
+            content={"detail": str(exc), "retry_after": exc.retry_after, "provider_message": exc.raw},
             headers={"Retry-After": str(exc.retry_after)},
         )
-    return JSONResponse(status_code=502, content={"detail": str(exc)})
+    return JSONResponse(status_code=502, content={"detail": str(exc), "provider_message": exc.raw})
 
 
 # ----------------------------------------------------------------------------- providers
