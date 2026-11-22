@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 
-from .llm import LLMClient, parse_json
+from .llm import LLMClient, complete_json
 from .models import Claim, Page
 
 EXTRACTION_INSTRUCTIONS = """\
@@ -104,8 +104,7 @@ def uncovered_sentences(sentences: list[tuple[int, str]], raw: list[dict]) -> li
     return [(page, s) for page, s in sentences if not _numbers(s) <= covered]
 
 
-def _parse_claims(text: str) -> list[dict]:
-    data = parse_json(text)
+def _claims_from(data: dict) -> list[dict]:
     claims = data.get("claims", []) if isinstance(data, dict) else []
     return [c for c in claims if isinstance(c, dict) and str(c.get("claim", "")).strip()]
 
@@ -141,14 +140,14 @@ def extract_claims(llm: LLMClient, pages: list[Page], max_claims: int = 25) -> l
 
     raw: list[dict] = []
     for chunk in chunk_pages(pages):
-        response = llm.complete(instructions, f"TEXT:\n\n{_format_pages(chunk)}")
-        raw += _parse_claims(response.text)
+        data, _ = complete_json(llm, instructions, f"TEXT:\n\n{_format_pages(chunk)}")
+        raw += _claims_from(data)
 
     # Recall guard: re-extract from numeric sentences the first pass missed.
     missed = uncovered_sentences(numeric_sentences(pages), raw)
     if missed:
         listing = "\n".join(f"[Page {page}] {s}" for page, s in missed[:40])
-        response = llm.complete(instructions, RECALL_PROMPT.format(sentences=listing))
-        raw += _parse_claims(response.text)
+        data, _ = complete_json(llm, instructions, RECALL_PROMPT.format(sentences=listing))
+        raw += _claims_from(data)
 
     return build_claims(raw, max_claims)

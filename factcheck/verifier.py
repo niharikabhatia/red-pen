@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from .llm import LLMClient, LLMError, parse_json
+from .llm import LLMClient, LLMError, complete_json
 from .models import Claim, ClaimResult, Source, Verdict
 
 VERIFY_INSTRUCTIONS = """\
@@ -80,8 +80,7 @@ def _sources(data: dict, citations: list[Source]) -> list[Source]:
 def _check(llm: LLMClient, claim: Claim, extra: str = "") -> ClaimResult:
     today = date.today()
     instructions = VERIFY_INSTRUCTIONS.format(today=today.strftime("%d %B %Y"), year=today.year)
-    response = llm.complete(instructions, _claim_prompt(claim) + extra, web_search=True)
-    data = parse_json(response.text)
+    data, response = complete_json(llm, instructions, _claim_prompt(claim) + extra, web_search=True)
 
     verdict = Verdict.parse(data.get("verdict"))
     if verdict is Verdict.ERROR:

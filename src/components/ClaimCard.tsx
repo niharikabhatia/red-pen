@@ -22,6 +22,17 @@ const host = (url: string) => {
   }
 };
 
+/** Domain + page title for a source. Gemini links are Google redirects, so the real
+ *  domain comes from the title ("statcounter.com · Search Engine Market Share"). */
+const sourceLabel = (url: string, title: string): [string, string] => {
+  const h = host(url);
+  if (h.endsWith('vertexaisearch.cloud.google.com')) {
+    const [domain, ...rest] = title.split(' · ');
+    return [domain.replace(/^www\./, ''), rest.join(' · ')];
+  }
+  return [h, title === url ? '' : title];
+};
+
 export function ProofText({ segments }: { segments: Segment[] }) {
   return (
     <>
@@ -154,7 +165,15 @@ export const ClaimCard = forwardRef<HTMLElement, Props>(function ClaimCard(
                       className="inline-flex items-center gap-1 text-xs text-ink-2 underline decoration-rule underline-offset-2 hover:text-pen"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      <span className="font-semibold">{host(s.url)}</span> · {s.title.slice(0, 80)}
+                      {(() => {
+                        const [domain, title] = sourceLabel(s.url, s.title);
+                        return (
+                          <>
+                            <span className="font-semibold">{domain}</span>
+                            {title && <> · {title.slice(0, 80)}</>}
+                          </>
+                        );
+                      })()}
                     </a>
                   </li>
                 ))}

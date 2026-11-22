@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .llm import LLMClient, parse_json
+from .llm import LLMClient, complete_json
 from .models import Claim, ClaimResult, Contradiction, Correction, Verdict
 
 CONSISTENCY_INSTRUCTIONS = """\
@@ -31,7 +31,7 @@ def find_contradictions(llm: LLMClient, claims: list[Claim]) -> list[Contradicti
     if len(claims) < 2:
         return []
     listing = "\n".join(f"[{c.id}] (page {c.page or '?'}) {c.text}" for c in claims)
-    data = parse_json(llm.complete(CONSISTENCY_INSTRUCTIONS, f"CLAIMS:\n{listing}").text)
+    data, _ = complete_json(llm, CONSISTENCY_INSTRUCTIONS, f"CLAIMS:\n{listing}")
     valid = {c.id for c in claims}
     out: list[Contradiction] = []
     for item in data.get("contradictions") or []:
@@ -60,7 +60,7 @@ def correct_document(
         f"[{c.id}] VERDICT: {r.verdict.value}\nORIGINAL: {c.quote or c.text}\nREAL FACT: {r.correct_fact}"
         for c, r in flagged
     )
-    data = parse_json(llm.complete(CORRECTION_INSTRUCTIONS, items).text)
+    data, _ = complete_json(llm, CORRECTION_INSTRUCTIONS, items)
     rewritten = {
         item.get("claim_id"): str(item.get("corrected") or "").strip()
         for item in data.get("corrections") or []

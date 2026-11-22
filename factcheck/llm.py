@@ -66,9 +66,15 @@ def parse_json(text: str) -> dict:
 
 
 def _retry_after(text: str, default: int = 20) -> int:
-    """Pull a retry delay ("retryDelay": "33s" / "try again in 12s") out of an error message."""
-    match = re.search(r"(?:retrydelay['\"]?\s*[:=]\s*['\"]?|try again in\s*)(\d+(?:\.\d+)?)\s*s", text, re.I)
-    return max(5, min(60, round(float(match.group(1))))) if match else default
+    """Pull a retry delay out of an error message.
+
+    Handles "retryDelay": "33s" (Gemini details), "Please retry in 33.4s" (Gemini text)
+    and "try again in 12s" (OpenAI).
+    """
+    match = re.search(
+        r"(?:retrydelay['\"]?\s*[:=]\s*['\"]?|retry in\s*|try again in\s*)(\d+(?:\.\d+)?)\s*s", text, re.I
+    )
+    return max(5, min(60, int(float(match.group(1))))) if match else default
 
 
 def classify_error(provider: str, exc: Exception) -> LLMError:
@@ -78,18 +84,49 @@ def classify_error(provider: str, exc: Exception) -> LLMError:
     low = msg.lower()
     status = getattr(exc, "status_code", None) or getattr(exc, "code", None)
 
-    if "insufficient_quota" in low or "billing" in low:
+    # OpenAI "no credit on the account": waiting will not help.
+    if "insufficient_quota" in low:
         return LLMError(f"{name} API quota exhausted: add credit to the account or switch provider in Settings.")
     if status in (401, 403) or "invalid_api_key" in low or "api key not valid" in low or "incorrect api key" in low:
         return LLMError(f"Invalid {name} API key. Check it in Settings or in the server configuration.")
+    # Rate limits (Gemini's free-tier 429 also mentions "billing details": still temporary).
     if status == 429 or "rate limit" in low or "resource_exhausted" in low or "429" in low:
-        if "per day" in low or "perday" in low:
+        if "perday" in low or "per day" in low:
             return LLMError(f"{name} daily free-tier quota used up. Try again tomorrow or use another key.")
         return LLMError(f"{name} rate limit reached; waiting before retrying.", retryable=True,
                         retry_after=_retry_after(msg))
     if status in (500, 502, 503, 504) or "overloaded" in low or "unavailable" in low:
         return LLMError(f"{name} is temporarily overloaded; retrying shortly.", retryable=True, retry_after=10)
     return LLMError(f"{name} error: {msg[:300]}")
+
+
+FORMAT_INSTRUCTIONS = """\
+You convert an answer into the exact JSON format requested below. Keep every fact,
+number, verdict and URL from the answer; do not add new information.
+Respond with JSON only.
+
+REQUESTED FORMAT (from the original instructions):
+{schema}"""
+
+
+def complete_json(
+    llm: "LLMClient", instructions: str, prompt: str, web_search: bool = False
+) -> tuple[dict, LLMResponse]:
+    """Call the model and parse its JSON reply.
+
+    Grounded answers occasionally come back as prose. Instead of failing the claim,
+    run one cheap formatting pass (no search) that converts the answer to JSON.
+    """
+    response = llm.complete(instructions, prompt, web_search=web_search)
+    try:
+        return parse_json(response.text), response
+    except LLMError:
+        if not response.text.strip():
+            raise
+    idx = instructions.rfind("Respond with JSON only")
+    tail = instructions[idx:] if idx >= 0 else instructions[-800:]
+    fixed = llm.complete(FORMAT_INSTRUCTIONS.format(schema=tail), f"ANSWER:\n{response.text}")
+    return parse_json(fixed.text), LLMResponse(text=fixed.text, citations=response.citations)
 
 
 # ----------------------------------------------------------------------------- OpenAI
@@ -160,15 +197,26 @@ def _gemini_text(response) -> str:
 
 
 def _gemini_citations(response) -> list[Source]:
-    """Sources from Google Search grounding metadata."""
+    """Sources from Google Search grounding metadata.
+
+    Grounding URIs are Google redirect links (vertexaisearch.cloud.google.com), so the
+    real site's domain is kept in the title for display.
+    """
     seen: dict[str, Source] = {}
     for cand in getattr(response, "candidates", None) or []:
         meta = getattr(cand, "grounding_metadata", None)
         for chunk in getattr(meta, "grounding_chunks", None) or []:
             web = getattr(chunk, "web", None)
             uri = getattr(web, "uri", None)
-            if uri and uri not in seen:
-                seen[uri] = Source(title=getattr(web, "title", None) or uri, url=uri)
+            if not uri or uri in seen:
+                continue
+            domain = getattr(web, "domain", None) or ""
+            title = getattr(web, "title", None) or ""
+            if domain and title and title != domain:
+                label = f"{domain} · {title}"
+            else:
+                label = domain or title or uri
+            seen[uri] = Source(title=label, url=uri)
     return list(seen.values())
 
 
