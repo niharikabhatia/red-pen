@@ -17,6 +17,7 @@ export function UploadScreen({ onFile, error }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [loadingSample, setLoadingSample] = useState<string | null>(null);
+  const [sampleError, setSampleError] = useState<string | null>(null);
 
   const pick = (files: FileList | null) => {
     const file = files?.[0];
@@ -25,9 +26,14 @@ export function UploadScreen({ onFile, error }: Props) {
 
   const runSample = async (name: string) => {
     setLoadingSample(name);
+    setSampleError(null);
     try {
-      const blob = await (await fetch(`/samples/${name}`)).blob();
-      onFile(new File([blob], name, { type: 'application/pdf' }));
+      const res = await fetch(`/samples/${name}`);
+      const type = res.headers.get('content-type') ?? '';
+      if (!res.ok || !type.includes('pdf')) throw new Error('sample missing');
+      onFile(new File([await res.blob()], name, { type: 'application/pdf' }));
+    } catch {
+      setSampleError('Could not load that sample document. Please upload a PDF of your own instead.');
     } finally {
       setLoadingSample(null);
     }
@@ -110,9 +116,9 @@ export function UploadScreen({ onFile, error }: Props) {
             />
           </div>
 
-          {error && (
+          {(error || sampleError) && (
             <div className="rounded-lg border border-pen/30 bg-pen-soft px-4 py-3 text-sm text-pen" role="alert">
-              {error}
+              {error || sampleError}
             </div>
           )}
 
