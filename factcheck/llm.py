@@ -133,7 +133,8 @@ class GeminiClient:
         self.types = types
         self.client = genai.Client(
             api_key=api_key,
-            http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_S * 1000),
+            # v1beta is required for system instructions + Google Search grounding.
+            http_options=types.HttpOptions(api_version="v1beta", timeout=REQUEST_TIMEOUT_S * 1000),
         )
         self.model = model
 

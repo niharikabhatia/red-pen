@@ -22,6 +22,7 @@ def test_gemini_citations_from_grounding_metadata():
 def test_gemini_client_sends_search_tool_only_for_web_search():
     client = make_client("gemini", "fake-key", "gemini-2.5-flash")
     assert isinstance(client, GeminiClient)
+    assert client.client._api_client._http_options.api_version == "v1beta"
     calls = []
 
     def generate_content(model, contents, config):
