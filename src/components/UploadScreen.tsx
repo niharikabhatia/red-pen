@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { MAX_FILE_MB } from '../lib/pdf';
 
 export const SAMPLES = [
+  { file: 'ai-search-brand-report.pdf', title: 'AI Search Brand Visibility Report', blurb: '10 claims · agency report · outdated, invented and correct stats' },
   { file: 'quick-demo-brief.pdf', title: 'Quick demo: Q4 Campaign Brief', blurb: '6 claims · 1 page · fastest to check' },
   { file: 'ai-marketing-playbook.pdf', title: 'The 2026 AI Marketing Playbook', blurb: '12 claims · market share, valuations, a "study"' },
   { file: 'india-digital-economy-report.pdf', title: "India's Digital Economy Briefing", blurb: '9 claims · GDP, UPI, plus an internal contradiction' },

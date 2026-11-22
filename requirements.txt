@@ -1,4 +1,5 @@
-fastapi>=0.115
-google-genai>=1.0
-openai>=1.66
-pydantic>=2.7
+# Python runtime dependencies for the API (api/index.py). Vercel installs these.
+fastapi>=0.115        # HTTP API
+pydantic>=2.7         # request/response models
+google-genai>=1.0     # Gemini + Google Search grounding
+openai>=1.66          # OpenAI Responses API + web_search
