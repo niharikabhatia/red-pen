@@ -15,9 +15,9 @@ from typing import Protocol
 from .models import Source
 
 PROVIDERS = ("gemini", "openai")
-DEFAULT_MODELS = {"gemini": "gemini-2.5-flash", "openai": "gpt-4.1-mini"}
+DEFAULT_MODELS = {"gemini": "gemini-3.5-flash-lite", "openai": "gpt-4.1-mini"}
 MODELS = {
-    "gemini": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"],
+    "gemini": ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
     "openai": ["gpt-4.1-mini", "gpt-4.1", "gpt-4o", "gpt-4o-mini"],
 }
 # One request must finish well inside the 60 s serverless limit.

@@ -41,7 +41,7 @@ def test_gemini_is_default_when_its_key_is_set(monkeypatch, fake_llm):
     monkeypatch.setenv("GEMINI_API_KEY", "g-key")
     assert client.get("/api/health").json()["default_provider"] == "gemini"
     client.post("/api/extract", json={"pages": PAGES})
-    assert fake_llm.made[-1] == ("gemini", "g-key", "gemini-2.5-flash")
+    assert fake_llm.made[-1] == ("gemini", "g-key", "gemini-3.5-flash-lite")
 
 
 def test_provider_header_and_user_key(fake_llm):
@@ -69,6 +69,9 @@ def test_missing_key_returns_401(monkeypatch):
 def test_rejects_unknown_model_and_provider():
     assert client.post("/api/extract", json={"pages": PAGES}, headers={"X-LLM-Model": "gpt-9"}).status_code == 400
     assert client.post("/api/extract", json={"pages": PAGES}, headers={"X-LLM-Provider": "bard"}).status_code == 400
+    # any well-formed Gemini model name is accepted (Google renames models often)
+    ok = client.post("/api/extract", json={"pages": PAGES}, headers={"X-LLM-Provider": "gemini", "X-API-Key": "k", "X-LLM-Model": "gemini-9.0-flash"})
+    assert ok.status_code == 200
 
 
 def test_empty_and_oversized_documents():

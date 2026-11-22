@@ -73,7 +73,7 @@ Design choices worth noting:
 
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4, pdf.js, pdf-lib, lucide icons
 - **Backend:** Python FastAPI, served as a single Vercel Python function (`api/index.py`)
-- **AI:** Google Gemini with Google Search grounding (default `gemini-2.5-flash`) **or** OpenAI Responses API with `web_search` (default `gpt-4.1-mini`), selectable per request
+- **AI:** Google Gemini with Google Search grounding (default `gemini-3.5-flash-lite`) **or** OpenAI Responses API with `web_search` (default `gpt-4.1-mini`), selectable per request
 - **Hosting:** Vercel (static frontend + Python serverless function)
 
 ## Project structure
@@ -139,7 +139,7 @@ npm run lint
 | `GEMINI_API_KEY` | one of the two | | Google Gemini key, free tier available. Used by default when set |
 | `OPENAI_API_KEY` | one of the two | | OpenAI key (needs billing credit) |
 | `LLM_PROVIDER` | | auto | Force `gemini` or `openai` |
-| `GEMINI_MODEL` | | `gemini-2.5-flash` | Any Gemini model that supports Google Search grounding |
+| `GEMINI_MODEL` | | `gemini-3.5-flash-lite` | Any Gemini model that supports Google Search grounding |
 | `OPENAI_MODEL` | | `gpt-4.1-mini` | Any Responses-API model that supports `web_search` |
 
 Reviewers can also switch provider and paste their own key in **Settings**; the key is held in the tab's memory only and sent with their requests.

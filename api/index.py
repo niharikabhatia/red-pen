@@ -15,6 +15,7 @@ so the browser can wait and retry instead of failing the report.
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -90,7 +91,9 @@ def get_llm(
     if not key:
         raise HTTPException(401, f"No {name} API key configured. Add your own key in Settings.")
     model = (x_llm_model or x_openai_model or "").strip() or default_model(provider)
-    if model not in allowed_models(provider):
+    # Gemini model names change often; accept any well-formed gemini-* name.
+    known = model in allowed_models(provider)
+    if not known and not (provider == "gemini" and re.fullmatch(r"gemini-[a-z0-9.\-]{1,40}", model)):
         raise HTTPException(400, f"Unsupported {name} model: {model}")
     return factcheck.make_client(provider, key, model)
 

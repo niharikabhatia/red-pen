@@ -13,7 +13,7 @@ import type { Health, Settings } from './types';
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
-  const [settings, setSettings] = useState<Settings>({ provider: 'gemini', apiKey: '', model: 'gemini-2.5-flash', maxClaims: 20 });
+  const [settings, setSettings] = useState<Settings>({ provider: 'gemini', apiKey: '', model: 'gemini-3.5-flash-lite', maxClaims: 20 });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { state, run, reset, recheckFailed, highlights, summary } = useFactCheck(settings);
   const lastFile = useRef<File | null>(null);
