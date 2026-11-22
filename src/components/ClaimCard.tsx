@@ -44,7 +44,7 @@ export const ClaimCard = forwardRef<HTMLElement, Props>(function ClaimCard(
   ref,
 ) {
   const [open, setOpen] = useState(false);
-  const pending = !result || status === 'checking' || status === 'queued';
+  const pending = !result || status === 'checking' || status === 'queued' || status === 'waiting';
   const v = result ? VERDICT_STYLE[result.verdict] : null;
   const flagged = result && (result.verdict === 'Inaccurate' || result.verdict === 'False');
   const quote = claim.quote || claim.text;
@@ -73,7 +73,7 @@ export const ClaimCard = forwardRef<HTMLElement, Props>(function ClaimCard(
         </p>
         {pending ? (
           <span className="rounded-sm border border-dashed border-muted px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
-            {status === 'queued' ? 'Queued' : 'Checking…'}
+            {status === 'queued' ? 'Queued' : status === 'waiting' ? 'Waiting…' : 'Checking…'}
           </span>
         ) : (
           <span

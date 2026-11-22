@@ -159,3 +159,15 @@ def test_corrections_only_for_flagged_claims():
                ClaimResult(claim_id=2, verdict=Verdict.VERIFIED)]
     out = correct_document(FakeLLM(), claims, results)
     assert len(out) == 1 and out[0].original == "98%" and "90%" in out[0].corrected
+
+
+def test_rate_limited_check_is_reraised_not_marked_error():
+    class Limited(FakeLLM):
+        def complete(self, *a, **k):
+            raise LLMError("rate limit", retryable=True, retry_after=20)
+
+    with pytest.raises(LLMError):
+        verify_claim(Limited(), CLAIM)
+    # ...but during a second opinion the first verdict is kept instead
+    first = ClaimResult(claim_id=1, verdict=Verdict.INACCURATE, confidence=50)
+    assert verify_claim(Limited(), CLAIM, previous=first).verdict is Verdict.INACCURATE

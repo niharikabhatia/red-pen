@@ -1,24 +1,52 @@
-"""Thin wrapper around the OpenAI Responses API."""
+"""LLM providers behind one tiny interface.
+
+Every caller uses ``client.complete(instructions, prompt, web_search=...)``:
+- ``OpenAIClient``: OpenAI Responses API, live web via the built-in ``web_search`` tool.
+- ``GeminiClient``: Google Gemini API, live web via Google Search grounding.
+"""
 
 from __future__ import annotations
 
 import json
 import re
 from dataclasses import dataclass, field
-
-from openai import OpenAI
+from typing import Protocol
 
 from .models import Source
 
+PROVIDERS = ("gemini", "openai")
+DEFAULT_MODELS = {"gemini": "gemini-2.5-flash", "openai": "gpt-4.1-mini"}
+MODELS = {
+    "gemini": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"],
+    "openai": ["gpt-4.1-mini", "gpt-4.1", "gpt-4o", "gpt-4o-mini"],
+}
+# One request must finish well inside the 60 s serverless limit.
+REQUEST_TIMEOUT_S = 50
+
 
 class LLMError(Exception):
-    """Raised when the model call fails or returns unusable output."""
+    """A model call failed or returned unusable output.
+
+    ``retryable`` marks temporary rate limits: the caller should wait
+    ``retry_after`` seconds and try again instead of giving up.
+    """
+
+    def __init__(self, message: str, retryable: bool = False, retry_after: int = 0):
+        super().__init__(message)
+        self.retryable = retryable
+        self.retry_after = retry_after
 
 
 @dataclass
 class LLMResponse:
     text: str
     citations: list[Source] = field(default_factory=list)
+
+
+class LLMClient(Protocol):
+    model: str
+
+    def complete(self, instructions: str, prompt: str, web_search: bool = False) -> LLMResponse: ...
 
 
 def parse_json(text: str) -> dict:
@@ -37,37 +65,53 @@ def parse_json(text: str) -> dict:
     raise LLMError(f"Model did not return valid JSON: {text[:200]!r}")
 
 
-def _friendly_error(exc: Exception) -> str:
+def _retry_after(text: str, default: int = 20) -> int:
+    """Pull a retry delay ("retryDelay": "33s" / "try again in 12s") out of an error message."""
+    match = re.search(r"(?:retrydelay['\"]?\s*[:=]\s*['\"]?|try again in\s*)(\d+(?:\.\d+)?)\s*s", text, re.I)
+    return max(5, min(60, round(float(match.group(1))))) if match else default
+
+
+def classify_error(provider: str, exc: Exception) -> LLMError:
+    """Turn a provider SDK exception into a user-friendly LLMError."""
+    name = "Gemini" if provider == "gemini" else "OpenAI"
     msg = str(exc)
     low = msg.lower()
-    if "insufficient_quota" in low or "quota" in low:
-        return "OpenAI API quota exhausted. Add credits or use a different API key."
-    if "invalid_api_key" in low or "401" in low or "incorrect api key" in low:
-        return "Invalid OpenAI API key."
-    if "rate limit" in low or "429" in low:
-        return "OpenAI rate limit hit. Please retry in a minute."
-    return f"OpenAI error: {msg[:300]}"
+    status = getattr(exc, "status_code", None) or getattr(exc, "code", None)
+
+    if "insufficient_quota" in low or "billing" in low:
+        return LLMError(f"{name} API quota exhausted: add credit to the account or switch provider in Settings.")
+    if status in (401, 403) or "invalid_api_key" in low or "api key not valid" in low or "incorrect api key" in low:
+        return LLMError(f"Invalid {name} API key. Check it in Settings or in the server configuration.")
+    if status == 429 or "rate limit" in low or "resource_exhausted" in low or "429" in low:
+        if "per day" in low or "perday" in low:
+            return LLMError(f"{name} daily free-tier quota used up. Try again tomorrow or use another key.")
+        return LLMError(f"{name} rate limit reached; waiting before retrying.", retryable=True,
+                        retry_after=_retry_after(msg))
+    if status in (500, 502, 503, 504) or "overloaded" in low or "unavailable" in low:
+        return LLMError(f"{name} is temporarily overloaded; retrying shortly.", retryable=True, retry_after=10)
+    return LLMError(f"{name} error: {msg[:300]}")
 
 
-class LLMClient:
+# ----------------------------------------------------------------------------- OpenAI
+class OpenAIClient:
     def __init__(self, api_key: str, model: str):
-        self.client = OpenAI(api_key=api_key, max_retries=3, timeout=120)
+        from openai import OpenAI
+
+        self.client = OpenAI(api_key=api_key, max_retries=1, timeout=REQUEST_TIMEOUT_S)
         self.model = model
 
     def complete(self, instructions: str, prompt: str, web_search: bool = False) -> LLMResponse:
-        """Run one model call. With ``web_search`` the model can browse the live web."""
         kwargs: dict = {"model": self.model, "instructions": instructions, "input": prompt}
         if web_search:
             kwargs["tools"] = [{"type": "web_search"}]
         try:
             response = self.client.responses.create(**kwargs)
-        except Exception as exc:  # openai raises a family of APIError subclasses
-            raise LLMError(_friendly_error(exc)) from exc
+        except Exception as exc:
+            raise classify_error("openai", exc) from exc
+        return LLMResponse(text=response.output_text or "", citations=_openai_citations(response))
 
-        return LLMResponse(text=response.output_text or "", citations=_citations(response))
 
-
-def _citations(response) -> list[Source]:
+def _openai_citations(response) -> list[Source]:
     """Collect url_citation annotations from a Responses API result."""
     seen: dict[str, Source] = {}
     for item in getattr(response, "output", None) or []:
@@ -78,3 +122,58 @@ def _citations(response) -> list[Source]:
                 if getattr(ann, "type", None) == "url_citation" and ann.url not in seen:
                     seen[ann.url] = Source(title=getattr(ann, "title", "") or ann.url, url=ann.url)
     return list(seen.values())
+
+
+# ----------------------------------------------------------------------------- Gemini
+class GeminiClient:
+    def __init__(self, api_key: str, model: str):
+        from google import genai
+        from google.genai import types
+
+        self.types = types
+        self.client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_S * 1000),
+        )
+        self.model = model
+
+    def complete(self, instructions: str, prompt: str, web_search: bool = False) -> LLMResponse:
+        types = self.types
+        config = types.GenerateContentConfig(
+            system_instruction=instructions,
+            temperature=0.2,
+            tools=[types.Tool(google_search=types.GoogleSearch())] if web_search else None,
+        )
+        try:
+            response = self.client.models.generate_content(model=self.model, contents=prompt, config=config)
+        except Exception as exc:
+            raise classify_error("gemini", exc) from exc
+        return LLMResponse(text=_gemini_text(response), citations=_gemini_citations(response))
+
+
+def _gemini_text(response) -> str:
+    try:
+        return response.text or ""
+    except Exception:  # blocked / empty candidates
+        return ""
+
+
+def _gemini_citations(response) -> list[Source]:
+    """Sources from Google Search grounding metadata."""
+    seen: dict[str, Source] = {}
+    for cand in getattr(response, "candidates", None) or []:
+        meta = getattr(cand, "grounding_metadata", None)
+        for chunk in getattr(meta, "grounding_chunks", None) or []:
+            web = getattr(chunk, "web", None)
+            uri = getattr(web, "uri", None)
+            if uri and uri not in seen:
+                seen[uri] = Source(title=getattr(web, "title", None) or uri, url=uri)
+    return list(seen.values())
+
+
+def make_client(provider: str, api_key: str, model: str) -> LLMClient:
+    if provider == "gemini":
+        return GeminiClient(api_key, model)
+    if provider == "openai":
+        return OpenAIClient(api_key, model)
+    raise ValueError(f"Unknown provider: {provider}")

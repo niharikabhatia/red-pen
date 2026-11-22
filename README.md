@@ -23,14 +23,14 @@ Every claim gets one of three verdicts:
 ## What it does
 
 - **Extracts** every checkable claim (statistics, dates, financial and technical figures, named-entity facts), rewritten as a self-contained sentence with the verbatim quote and page.
-- **Verifies** each claim against the **live web** (OpenAI Responses API + `web_search` tool), date-aware, preferring primary sources.
+- **Verifies** each claim against the **live web**, using **Gemini + Google Search grounding** or **OpenAI + web search**. Checks are date-aware and prefer primary sources.
 - **Reports** the verdict, the **real fact**, a short explanation, an **evidence quote** from the source, links and a confidence score.
 - **Highlights the claims inside the PDF**, coloured by verdict. Click a highlight to jump to its card, and vice versa.
 - **Writes a corrected version** of every flagged passage, shown as editor's proof marks (~~wrong~~ ✎ right), with "copy clean text".
 - **Checks internal consistency**: flags places where the document contradicts itself.
 - **Trust score**: the share of checked claims that hold up.
 - **Exports** CSV, JSON or a printable report.
-- **Reviewer-proof**: three built-in trap documents, bring-your-own-key if the hosted credits run out, clear error messages.
+- **Reviewer-proof**: three built-in trap documents, automatic wait-and-retry on API rate limits, a "re-check failed claims" button, and bring-your-own-key (Gemini or OpenAI) if the hosted quota runs out.
 
 <p>
   <img src="docs/screenshots/upload.png" width="49%" alt="Upload screen" />
@@ -48,7 +48,8 @@ PDF ─► pdf.js (in the browser): render pages + extract positioned text
             → a planted lie can't slip through extraction.
     ─► POST /api/verify   (one request per claim, 4 in parallel, live progress)
          • today's date is in the prompt → old stats presented as current = Inaccurate
-         • ≥ 2 web searches: the claim itself + "latest <topic> <year>"
+         • ≥ 2 web searches (Google Search grounding or OpenAI web_search):
+           the claim itself + "latest <topic> <year>"
          • source priority: official/primary → statistics agencies → reputable news
          • returns verdict, correct fact (with as-of date), evidence quote, sources
          • confidence < 70 → automatic second opinion with different queries,
@@ -72,7 +73,7 @@ Design choices worth noting:
 
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4, pdf.js, lucide icons
 - **Backend:** Python FastAPI, served as a single Vercel Python function (`api/index.py`)
-- **AI:** OpenAI Responses API with the built-in `web_search` tool (default model `gpt-4.1-mini`)
+- **AI:** Google Gemini with Google Search grounding (default `gemini-2.5-flash`) **or** OpenAI Responses API with `web_search` (default `gpt-4.1-mini`), selectable per request
 - **Hosting:** Vercel (static frontend + Python serverless function)
 
 ## Project structure
@@ -83,7 +84,7 @@ factcheck/                Python package (all fact-checking logic)
   claims.py               claim extraction + numeric-sentence recall guard
   verifier.py             live-web verification, second opinion, reconcile()
   review.py               internal contradictions + corrected passages
-  llm.py                  OpenAI Responses API wrapper, JSON parsing, citations
+  llm.py                  Gemini + OpenAI clients, citations, rate-limit classification
   models.py               pydantic models (Claim, ClaimResult, Verdict…)
 src/                      React app
   hooks/useFactCheck.ts   workflow state machine (read → extract → verify → review)
@@ -99,12 +100,12 @@ requirements.txt          Python dependencies
 
 ## Run locally
 
-Prerequisites: Python 3.10+, Node 20+, an OpenAI API key.
+Prerequisites: Python 3.10+, Node 20+, and a Gemini key (free at https://aistudio.google.com/apikey) or an OpenAI key.
 
 ```bash
 pip install -r requirements-dev.txt
 npm install
-export OPENAI_API_KEY=sk-...
+export GEMINI_API_KEY=AIza...   # or OPENAI_API_KEY=sk-...
 ```
 
 Terminal 1, API on :8000:
@@ -127,17 +128,22 @@ npm run lint
 
 1. Push this repository to GitHub.
 2. In Vercel: **Add New → Project → Import** the repo (framework preset *Vite* is detected; `vercel.json` configures the Python function).
-3. **Settings → Environment Variables:** add `OPENAI_API_KEY` (optional: `OPENAI_MODEL`).
+3. **Settings → Environment Variables:** add `GEMINI_API_KEY` and/or `OPENAI_API_KEY` (see the table below).
 4. Deploy. The app is served at `/` and the API at `/api/*`.
 
 ## Configuration
 
 | Variable | Required | Default | Notes |
 |---|---|---|---|
-| `OPENAI_API_KEY` | ✅ | | Server key used for all checks |
+| `GEMINI_API_KEY` | one of the two | | Google Gemini key, free tier available. Used by default when set |
+| `OPENAI_API_KEY` | one of the two | | OpenAI key (needs billing credit) |
+| `LLM_PROVIDER` | | auto | Force `gemini` or `openai` |
+| `GEMINI_MODEL` | | `gemini-2.5-flash` | Any Gemini model that supports Google Search grounding |
 | `OPENAI_MODEL` | | `gpt-4.1-mini` | Any Responses-API model that supports `web_search` |
 
-Reviewers can also paste their own key in **Settings**; it is held in the tab's memory only and sent with their requests.
+Reviewers can also switch provider and paste their own key in **Settings**; the key is held in the tab's memory only and sent with their requests.
+
+**Rate limits:** free and low-tier API keys are throttled. Red Pen checks two claims at a time; when the provider answers "rate limited", the API returns HTTP 429 + `Retry-After` and the browser waits (showing a countdown) and retries automatically instead of failing the report.
 
 ## Test documents (answer keys)
 

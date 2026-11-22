@@ -12,21 +12,24 @@ import type { Health, Settings } from './types';
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
-  const [settings, setSettings] = useState<Settings>({ apiKey: '', model: 'gpt-4.1-mini', maxClaims: 25 });
+  const [settings, setSettings] = useState<Settings>({ provider: 'gemini', apiKey: '', model: 'gemini-2.5-flash', maxClaims: 20 });
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { state, run, reset, highlights, summary } = useFactCheck(settings);
+  const { state, run, reset, recheckFailed, highlights, summary } = useFactCheck(settings);
   const lastFile = useRef<File | null>(null);
 
   useEffect(() => {
     getHealth().then((h) => {
       setHealth(h);
-      if (h) setSettings((s) => ({ ...s, model: h.default_model }));
+      if (h?.providers) {
+        const provider = h.default_provider;
+        setSettings((s) => ({ ...s, provider, model: h.providers[provider].default_model }));
+      }
     });
   }, []);
 
   const start = (file: File) => {
     lastFile.current = file;
-    if (health && !health.server_key && !settings.apiKey.trim()) {
+    if (health?.providers && !health.providers[settings.provider]?.server_key && !settings.apiKey.trim()) {
       setSettingsOpen(true);
       return;
     }
@@ -43,7 +46,7 @@ export default function App() {
     corrections: state.corrections,
   });
 
-  const keyProblem = state.error && /api key|quota|401/i.test(state.error);
+  const keyProblem = state.error && /api key|quota|401|rate limit/i.test(state.error);
 
   return (
     <div className="min-h-full">
@@ -59,7 +62,7 @@ export default function App() {
               <p className="flex-1 font-semibold">{state.error}</p>
               {keyProblem && (
                 <button onClick={() => setSettingsOpen(true)} className="rounded-full border border-pen px-4 py-1.5 text-sm font-semibold">
-                  Use my own key
+                  Use another key / provider
                 </button>
               )}
               {lastFile.current && (
@@ -85,6 +88,8 @@ export default function App() {
             total={summary.total}
             checked={summary.checked}
             trustScore={summary.trustScore}
+            pausedUntil={state.pausedUntil}
+            onRecheck={recheckFailed}
             onCsv={() => exportCsv(report())}
             onJson={() => exportJson(report())}
             onPrint={() => window.print()}
@@ -102,7 +107,7 @@ export default function App() {
         health={health}
       />
       <footer className="border-t border-rule py-6 text-center font-serif text-xs italic text-muted no-print">
-        Red Pen · claims verified against the live web with OpenAI web search · always double-check before publishing
+        Red Pen · claims verified against the live web with {settings.provider === 'gemini' ? 'Gemini + Google Search' : 'OpenAI web search'} · always double-check before publishing
       </footer>
     </div>
   );

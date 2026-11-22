@@ -45,19 +45,27 @@ export interface Correction {
 }
 
 /** Per-claim progress shown while the check runs. */
-export type ClaimStatus = 'queued' | 'checking' | 'rechecking' | 'done';
+export type ClaimStatus = 'queued' | 'checking' | 'waiting' | 'rechecking' | 'done';
 
 export type Stage = 'idle' | 'reading' | 'extracting' | 'verifying' | 'reviewing' | 'done' | 'error';
 
+export type Provider = 'gemini' | 'openai';
+
 export interface Settings {
+  provider: Provider;
   apiKey: string;
   model: string;
   maxClaims: number;
 }
 
-export interface Health {
-  ok: boolean;
+export interface ProviderInfo {
+  server_key: boolean;
   default_model: string;
   models: string[];
-  server_key: boolean;
+}
+
+export interface Health {
+  ok: boolean;
+  default_provider: Provider;
+  providers: Record<Provider, ProviderInfo>;
 }

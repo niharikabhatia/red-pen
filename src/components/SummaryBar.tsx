@@ -1,4 +1,5 @@
-import { Check, Download, FileJson, Loader2, Printer, RotateCcw } from 'lucide-react';
+import { Check, Download, FileJson, Hourglass, Loader2, Printer, RefreshCw, RotateCcw } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import type { Stage } from '../types';
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
   total: number;
   checked: number;
   trustScore: number | null;
+  pausedUntil: number | null;
+  onRecheck: () => void;
   onCsv: () => void;
   onJson: () => void;
   onPrint: () => void;
@@ -29,6 +32,13 @@ export function SummaryBar(p: Props) {
   const toFix = p.counts.Inaccurate + p.counts.False;
   const seg = (n: number) => (p.total ? `${(n / p.total) * 100}%` : '0%');
   const stageIdx = ORDER.indexOf(p.stage);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!p.pausedUntil) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [p.pausedUntil]);
+  const pauseLeft = p.pausedUntil ? Math.max(0, Math.ceil((p.pausedUntil - now) / 1000)) : 0;
 
   return (
     <div className="z-30 border-b border-rule bg-paper/95 backdrop-blur no-print lg:sticky lg:top-0">
@@ -84,9 +94,22 @@ export function SummaryBar(p: Props) {
                 </li>
               );
             })}
+            {pauseLeft > 0 && (
+              <li className="flex items-center gap-1.5 rounded-full bg-amber-soft px-2.5 py-0.5 text-amber" data-testid="paused">
+                <Hourglass className="h-3.5 w-3.5" /> Paused for rate limit · resuming in {pauseLeft}s
+              </li>
+            )}
           </ol>
         ) : (
           <div className="flex flex-wrap items-center gap-2 text-sm">
+            {p.counts.Error > 0 && (
+              <button
+                onClick={p.onRecheck}
+                className="inline-flex items-center gap-1.5 rounded-full border border-pen px-3 py-2 font-semibold text-pen hover:bg-pen-soft"
+              >
+                <RefreshCw className="h-4 w-4" /> Re-check {p.counts.Error} failed
+              </button>
+            )}
             <BarButton onClick={p.onCsv} icon={<Download className="h-4 w-4" />} label="CSV" />
             <BarButton onClick={p.onJson} icon={<FileJson className="h-4 w-4" />} label="JSON" />
             <BarButton onClick={p.onPrint} icon={<Printer className="h-4 w-4" />} label="Print" />

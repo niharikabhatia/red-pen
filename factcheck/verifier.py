@@ -1,6 +1,6 @@
 """Steps 2 & 3 - Verify a claim against the live web and produce a verdict.
 
-Each call lets the model run OpenAI's built-in ``web_search`` tool. The prompt
+Each call lets the model search the live web (OpenAI web_search or Gemini Google Search grounding). The prompt
 carries today's date and forces two searches (the claim itself and the latest
 figure), so an old statistic presented as current comes back "Inaccurate".
 Low-confidence results can be re-checked with ``previous`` (second opinion).
@@ -19,7 +19,7 @@ Today's date is {today}. Marketing documents often contain outdated statistics,
 inflated numbers, wrong dates and fabricated studies. Trust only evidence you find
 now, not your memory.
 
-PROCESS (use the web_search tool):
+PROCESS (use your web search tool):
 1. Search for the claim itself (the specific figure/date/entity).
 2. Search for the LATEST authoritative figure on the same topic (e.g. "<topic> {year}").
 3. Prefer primary and authoritative sources: official reports, company filings and
@@ -144,4 +144,6 @@ def verify_claim(llm: LLMClient, claim: Claim, previous: ClaimResult | None = No
     except Exception as exc:  # one failing claim must never break the report
         if previous is not None and previous.verdict is not Verdict.ERROR:
             return previous.model_copy(update={"second_opinion": True})
+        if isinstance(exc, LLMError) and exc.retryable:
+            raise  # rate limit: let the caller wait and retry instead of giving up
         return ClaimResult(claim_id=claim.id, verdict=Verdict.ERROR, explanation=str(exc)[:300])
